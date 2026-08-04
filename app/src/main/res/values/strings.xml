@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name" translatable="false">MuCuteClient</string>
+    <string name="app_name" translatable="false">Cipher Utility</string>
     <string name="home">Home</string>
     <string name="what_is_this">What\'s this?</string>
     <string name="introduction">MuCuteClient is a Minecraft Bedrock client that utilizes a MITM approach, providing various utilities to enhance the gameplay experience without modifying the game\'s memory.</string>
