@@ -1,60 +1,40 @@
 package com.mucheng.mucute.client.game.module.combat
 
-import java.util.Random
+import com.mucheng.mucute.client.game.InterceptablePacket
+import com.mucheng.mucute.client.game.Module
+import com.mucheng.mucute.client.game.ModuleCategory
+import org.cloudburstmc.protocol.bedrock.packet.PlayerAuthInputPacket
 
-class AutoTotem {
-    var enabled: Boolean = true
-    
-    // Humanized Delay Settings (in milliseconds)
-    private val minDelayMs: Long = 50L
-    private val maxDelayMs: Long = 110L
-    private var lastSwapTime: Long = 0L
-    private var nextTargetDelay: Long = 0L
+class AutoTotemModule : Module("auto_totem", ModuleCategory.Combat) {
 
-    init {
-        recalculateDelay()
-    }
+    private var slotDelay by intValue("delay_ms", 50, 0..500)
+    private var lastSwapTime = 0L
 
-    /**
-     * Calculates a human-like delay using a Gaussian (bell-curve) distribution
-     * so swap timing isn't a fixed, detectable pattern.
-     */
-    private fun recalculateDelay() {
-        val mean = (minDelayMs + maxDelayMs) / 2.0
-        val stdDev = (maxDelayMs - minDelayMs) / 4.0
-        val random = Random()
-        
-        val gaussianDelay = (mean + random.nextGaussian() * stdDev).toLong()
-        nextTargetDelay = gaussianDelay.coerceIn(minDelayMs, maxDelayMs)
-    }
+    override fun beforePacketBound(interceptablePacket: InterceptablePacket) {
+        if (!isEnabled) return
 
-    /**
-     * Called on each client tick / packet update.
-     */
-    fun onUpdate() {
-        if (!enabled) return
+        val packet = interceptablePacket.packet
+        if (packet is PlayerAuthInputPacket) {
+            val currentTime = System.currentTimeMillis()
+            if (currentTime - lastSwapTime < slotDelay) return
 
-        val currentTime = System.currentTimeMillis()
-        
-        // Ensure humanized reaction time has passed since last swap
-        if (currentTime - lastSwapTime < nextTargetDelay) {
-            return
+            val localPlayer = session.localPlayer ?: return
+            
+            // ID 450 (or "totem_of_undying") is Bedrock's Totem of Undying
+            val offhandItem = localPlayer.offhandItem
+            if (offhandItem?.id != "totem_of_undying" && offhandItem?.id != "450") {
+                
+                // Find totem in player inventory
+                val totemSlot = localPlayer.inventory.indexOfFirst { item ->
+                    item.id == "totem_of_undying" || item.id == "450"
+                }
+
+                if (totemSlot != -1) {
+                    // Swap totem to offhand via local player session controller
+                    localPlayer.equipToOffhand(totemSlot)
+                    lastSwapTime = currentTime
+                }
+            }
         }
-
-        // Logic check: swap totem to offhand
-        if (shouldSwapTotem()) {
-            executeTotemSwap()
-            lastSwapTime = currentTime
-            recalculateDelay() // Dynamic delay for next action
-        }
-    }
-
-    private fun shouldSwapTotem(): Boolean {
-        // Intercept offhand item state here
-        return true
-    }
-
-    private fun executeTotemSwap() {
-        // Trigger offhand swap action
     }
 }
